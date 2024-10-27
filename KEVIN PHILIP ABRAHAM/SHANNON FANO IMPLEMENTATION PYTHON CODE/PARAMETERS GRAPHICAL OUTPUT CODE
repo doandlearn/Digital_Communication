@@ -1,0 +1,62 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Function to load the data from the Excel sheet
+def load_metrics_from_excel(file_path, sheet_name):
+    # Load data from the Excel file
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+
+    # Assuming the metrics are in the first few columns
+    # Adjust these columns depending on where your metrics are stored
+    sample_sizes = df.iloc[1:21, 0].values  # First column: Sample size (rows 2 to 16)
+    avg_codeword_lengths = df.iloc[1:21, 1].values  # Second column: Avg Codeword Length
+    entropies = df.iloc[1:21, 2].values  # Third column: Entropy
+    efficiencies = df.iloc[1:21, 3].values  # Fourth column: Efficiency
+    variances = df.iloc[1:21, 4].values  # Fifth column: Variance
+
+    return sample_sizes, avg_codeword_lengths, entropies, efficiencies, variances
+
+# Function to plot the metrics
+def plot_metrics(sample_sizes, avg_codeword_lengths, entropies, efficiencies, variances):
+    plt.figure(figsize=(10, 6))
+
+    # Plot Average Codeword Length
+    plt.subplot(2, 2, 1)
+    plt.plot(sample_sizes, avg_codeword_lengths, marker='o', label="Avg Codeword Length")
+    plt.xlabel('Sample Size')
+    plt.ylabel('Avg Codeword Length')
+    plt.title('Average Codeword Length vs Sample Size')
+
+    # Plot Entropy
+    plt.subplot(2, 2, 2)
+    plt.plot(sample_sizes, entropies, marker='o', label="Entropy")
+    plt.xlabel('Sample Size')
+    plt.ylabel('Entropy')
+    plt.title('Entropy vs Sample Size')
+
+    # Plot Efficiency
+    plt.subplot(2, 2, 3)
+    plt.plot(sample_sizes, efficiencies, marker='o', label="Efficiency")
+    plt.xlabel('Sample Size')
+    plt.ylabel('Efficiency')
+    plt.title('Efficiency vs Sample Size')
+
+    # Plot Variance
+    plt.subplot(2, 2, 4)
+    plt.plot(sample_sizes, variances, marker='o', label="Variance")
+    plt.xlabel('Sample Size')
+    plt.ylabel('Variance')
+    plt.title('Variance vs Sample Size')
+
+    plt.tight_layout()
+    plt.show()
+
+# File path and sheet name details
+file_path = r"C:\My Folders\karunya\s5\digital communication\shannon fano project\overall_shannon_fano_metrics.xlsx"
+sheet_name = 'overall_shannon_fano_metrics'
+
+# Load the metrics data
+sample_sizes, avg_codeword_lengths, entropies, efficiencies, variances = load_metrics_from_excel(file_path, sheet_name)
+
+# Plot the metrics
+plot_metrics(sample_sizes, avg_codeword_lengths, entropies, efficiencies, variances)
