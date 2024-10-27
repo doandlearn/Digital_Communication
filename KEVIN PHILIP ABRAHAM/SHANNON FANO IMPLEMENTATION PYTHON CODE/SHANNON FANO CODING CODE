@@ -1,0 +1,114 @@
+import pandas as pd
+import numpy as np
+from collections import Counter
+
+# Function to implement the Shannon-Fano algorithm
+def shannon_fano(data, prefix=""):
+    if len(data) == 1:
+        return {data[0][0]: prefix}
+
+    total_weight = sum([item[1] for item in data])
+    split_point = 0
+    for i in range(len(data)):
+        if sum([item[1] for item in data[:i + 1]]) >= total_weight / 2:
+            split_point = i + 1
+            break
+
+    left = shannon_fano(data[:split_point], prefix + "0")
+    right = shannon_fano(data[split_point:], prefix + "1")
+
+    left.update(right)
+    return left
+
+# Load data from an Excel sheet
+def load_data_from_excel(file_path, sheet_name):
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    values = df.values.flatten().tolist()  # Convert to a flat list
+    return values
+
+# Main function to apply Shannon-Fano coding and calculate metrics
+def apply_shannon_fano(file_path, sheet_name):
+    values = load_data_from_excel(file_path, sheet_name)
+
+    # Calculate the frequency of each unique value
+    frequency_dict = Counter(values)
+    data = list(frequency_dict.items())  # Convert to list of (value, frequency) pairs
+    # Sort data by frequency in descending order
+    data.sort(key=lambda x: x[1], reverse=True)
+
+    # Generate Shannon-Fano code
+    shannon_fano_code = shannon_fano(data)
+
+    # Convert the data and the corresponding code into a DataFrame
+    coded_data = pd.DataFrame(list(shannon_fano_code.items()), columns=["Value", "Shannon-Fano Code"])
+
+    # Create frequency DataFrame
+    freq_df = pd.DataFrame(data, columns=['Value', 'Frequency'])
+
+    # Merge coded_data and freq_df
+    merged_data = pd.merge(coded_data, freq_df, on='Value')
+
+    # Compute total frequency
+    total_frequency = merged_data['Frequency'].sum()
+
+    # Compute probabilities
+    merged_data['Probability'] = merged_data['Frequency'] / total_frequency
+
+    # Compute codeword lengths
+    merged_data['Codeword Length'] = merged_data['Shannon-Fano Code'].apply(len)
+
+    # Compute average codeword length
+    avg_codeword_length = (merged_data['Probability'] * merged_data['Codeword Length']).sum()
+
+    # Compute entropy
+    merged_data['Entropy Term'] = merged_data['Probability'] * np.log2(merged_data['Probability'])
+    entropy = -merged_data['Entropy Term'].sum()
+
+    # Compute efficiency
+    efficiency = entropy / avg_codeword_length
+
+    # Compute variance of codeword lengths
+    merged_data['Variance Term'] = merged_data['Probability'] * (merged_data['Codeword Length'] - avg_codeword_length) ** 2
+    variance = merged_data['Variance Term'].sum()
+
+    # Print the calculated values
+    print(f"Average Codeword Length: {avg_codeword_length}")
+    print(f"Entropy: {entropy}")
+    print(f"Efficiency: {efficiency}")
+    print(f"Variance of Codeword Lengths: {variance}")
+
+    # Return the merged data and metrics
+    return merged_data[['Value', 'Frequency', 'Probability', 'Shannon-Fano Code', 'Codeword Length']], avg_codeword_length, entropy, efficiency, variance
+
+# Save data to CSV, including the calculated metrics
+# Save data to CSV, including the calculated metrics
+def save_to_csv(file_path, shannon_fano_data, avg_length, entropy, efficiency, variance):
+    # Ensure the Shannon-Fano code is treated as a string to preserve leading zeros
+    shannon_fano_data['Shannon-Fano Code'] = shannon_fano_data['Shannon-Fano Code'].apply(lambda x: f"'{x}")
+    
+    # Save the Shannon-Fano coded data to a CSV file
+    shannon_fano_data.to_csv(file_path + '_shannon_fano_coded_data.csv', index=False)
+
+    # Create a DataFrame for the metrics
+    metrics_df = pd.DataFrame({
+        'Metric': ['Average Codeword Length', 'Entropy', 'Efficiency', 'Variance'],
+        'Value': [avg_length, entropy, efficiency, variance]
+    })
+
+    # Save the metrics to another CSV file
+    metrics_df.to_csv(file_path + '_shannon_fano_metrics.csv', index=False)
+
+
+# Main code
+file_path = r"C:\My Folders\karunya\s5\digital communication\shannon fano project\data20"
+sheet_name = 'Sheet1'
+
+# Apply Shannon-Fano coding and get metrics
+shannon_fano_data, avg_length, entropy, efficiency, variance = apply_shannon_fano(file_path + ".xlsx", sheet_name)
+
+# Save the data and metrics to CSV
+save_to_csv(file_path, shannon_fano_data, avg_length, entropy, efficiency, variance)
+
+# Print some of the coded data and metrics for reference
+print(shannon_fano_data.head())  # First few rows of the Shannon-Fano coded data
+print(shannon_fano_data.tail())
