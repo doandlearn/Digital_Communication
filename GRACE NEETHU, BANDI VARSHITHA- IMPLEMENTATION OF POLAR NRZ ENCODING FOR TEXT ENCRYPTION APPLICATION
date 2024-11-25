@@ -1,0 +1,222 @@
+% Transmitter - Encode and Send
+
+% Input secret code (6-letter word)
+secret_code = 'Encode';
+
+% Step 1: Convert the text to ASCII values
+ascii_values = double(secret_code);
+
+% Step 2: Convert ASCII to binary (8 bits per character)
+binary_sequence = dec2bin(ascii_values, 8); % 8-bit binary for each character
+binary_sequence = reshape(binary_sequence', 1, []); % Flatten to single row
+
+% Display binary sequence
+disp('Binary Sequence for the 6-letter word:');
+disp(binary_sequence);
+
+% Step 3: Convert binary string to Polar NRZ values (y for Polar)
+y_polar = zeros(1, length(binary_sequence));
+for i = 1:length(binary_sequence)
+if binary_sequence(i) == '1'
+y_polar(i) = 1; % Polar NRZ: 1 becomes +1
+else
+y_polar(i) = -1; % Polar NRZ: 0 becomes -1
+end
+end
+
+% Step 4: Convert binary string to Bipolar NRZ values (y for Bipolar)
+y_bipolar = zeros(1, length(binary_sequence));
+bipolar_flag = 1; % Alternates between +1 and -1 for consecutive 1s
+for i = 1:length(binary_sequence)
+if binary_sequence(i) == '1'
+y_bipolar(i) = bipolar_flag; % Alternates for '1'
+bipolar_flag = -bipolar_flag; % Flip for next '1'
+else
+y_bipolar(i) = 0; % Bipolar NRZ: 0 becomes 0
+end
+end
+
+% Parameters for calculations
+Fs = 1000; % Sampling frequency (arbitrary for analysis)
+T_s = 1/Fs; % Symbol period (sampling interval)
+bit_rate = 1 / T_s; % Bit rate (bits per second)
+data_rate = bit_rate; % Data rate is the same as bit rate
+
+% Calculate power consumption without noise
+power_polar = mean(y_polar.^2);
+power_bipolar = mean(y_bipolar.^2);
+
+% Display bit rate, data rate, and power consumption
+disp('Bit Rate (bits per second):');
+disp(bit_rate);
+disp('Data Rate (bits per second):');
+disp(data_rate);
+disp('Power Consumption (Polar NRZ):');
+disp(power_polar);
+disp('Power Consumption (Bipolar NRZ):');
+disp(power_bipolar);
+
+% Plot original transmitted Polar and Bipolar NRZ signals
+time = 0:length(binary_sequence)-1; % Time steps for plotting
+
+figure;
+stairs(time, y_polar, 'LineWidth', 2); % Plot original Polar NRZ
+ylim([-2, 2]);
+xlabel('Time');
+ylabel('Amplitude');
+title('Original Transmitted Polar NRZ Signal');
+grid on;
+figure;
+stairs(time, y_bipolar, 'LineWidth', 2); % Plot original Bipolar NRZ
+ylim([-2, 2]);
+xlabel('Time');
+ylabel('Amplitude');
+title('Original Transmitted Bipolar NRZ Signal');
+grid on;
+
+% Define noise levels for AWGN (test with different levels)
+noise_levels = [0.01, 0.1, 0.5, 1]; % Variance of AWGN
+
+for noise_var = noise_levels
+% Generate AWGN (n) with specified variance for Polar and Bipolar signals
+n_polar = sqrt(noise_var) * randn(size(y_polar));
+n_bipolar = sqrt(noise_var) * randn(size(y_bipolar));
+
+% Simulate transmission by adding noise: y + n
+received_polar = y_polar + n_polar;
+received_bipolar = y_bipolar + n_bipolar;
+
+% Receiver - Decode Polar NRZ Signal
+decoded_binary_polar = '';
+for i = 1:length(received_polar)
+if received_polar(i) >= 0
+decoded_binary_polar = strcat(decoded_binary_polar, '1'); % +1 or close is binary 1
+else
+decoded_binary_polar = strcat(decoded_binary_polar, '0'); % -1 or close is binary 0
+end
+end
+
+% Receiver - Decode Bipolar NRZ Signal
+decoded_binary_bipolar = '';
+for i = 1:length(received_bipolar)
+if received_bipolar(i) > 0 % Non-zero value close to bipolar flag is '1'
+decoded_binary_bipolar = strcat(decoded_binary_bipolar, '1');
+else
+decoded_binary_bipolar = strcat(decoded_binary_bipolar, '0'); % 0 is '0'
+end
+end
+
+% Convert received binary sequences to ASCII and original text
+decoded_text_polar = '';
+decoded_text_bipolar = '';
+
+% Convert binary sequence to characters for Polar NRZ
+for i = 1:8:length(decoded_binary_polar)
+byte_polar = decoded_binary_polar(i:i+7); % 8-bit segment
+ascii_char_polar = char(bin2dec(byte_polar)); % Convert to character
+decoded_text_polar = strcat(decoded_text_polar, ascii_char_polar);
+end
+
+% Convert binary sequence to characters for Bipolar NRZ
+for i = 1:8:length(decoded_binary_bipolar)
+byte_bipolar = decoded_binary_bipolar(i:i+7); % 8-bit segment
+ascii_char_bipolar = char(bin2dec(byte_bipolar)); % Convert to character
+decoded_text_bipolar = strcat(decoded_text_bipolar, ascii_char_bipolar);
+end
+
+% Display the decoded text for each noise level
+fprintf('Noise Variance: %0.2f\n', noise_var);
+disp('Received binary code from Polar NRZ:');
+disp(decoded_binary_polar);
+num_bit_errors_P = 0;
+
+% Iterate through the binary strings, comparing each bit
+for i = 1:length(binary_sequence)
+if binary_sequence(i) ~= decoded_binary_polar(i)
+num_bit_errors_P = num_bit_errors_P + 1;
+end
+end
+
+% Calculate the total number of bits
+total_bits = length(binary_sequence);
+
+% Calculate the BER
+BER_P = num_bit_errors_P / total_bits;
+
+disp(['Bit Error Rate (BER) for Polar NRZ: ', num2str(BER_P)]);
+disp('Decoded Text from Polar NRZ:');
+disp(decoded_text_polar);
+disp('Received binary code from Bipolar NRZ:');
+disp(decoded_binary_bipolar);
+num_bit_errors_B = 0;
+% Iterate through the binary strings, comparing each bit
+for i = 1:length(binary_sequence)
+if binary_sequence(i) ~= decoded_binary_bipolar(i)
+num_bit_errors_B = num_bit_errors_B + 1;
+end
+end
+
+% Calculate the total number of bits
+total_bits = length(binary_sequence);
+
+% Calculate the BER
+BER_B = num_bit_errors_B / total_bits;
+
+disp(['Bit Error Rate (BER) for Bipolar NRZ: ', num2str(BER_B)]);
+
+disp('Decoded Text from Bipolar NRZ:');
+disp(decoded_text_bipolar);
+
+
+
+% Power Consumption with Noise
+power_with_noise_polar = mean(received_polar.^2);
+power_with_noise_bipolar = mean(received_bipolar.^2);
+
+disp(['Power Consumption with Noise (Polar NRZ) for Variance ', num2str(noise_var), ':']);
+disp(power_with_noise_polar);
+disp(['Power Consumption with Noise (Bipolar NRZ) for Variance ', num2str(noise_var), ':']);
+disp(power_with_noise_bipolar);
+
+% Plot received noisy signals
+figure;
+% Plot received noisy Polar NRZ signal
+stairs(time, received_polar, 'LineWidth', 2);
+ylim([-2, 2]);
+xlabel('Time');
+ylabel('Amplitude');
+title(['Received Polar NRZ Signal with AWGN (Variance = ', num2str(noise_var), ')']);
+grid on;
+
+% Plot received noisy Bipolar NRZ signal
+figure;
+stairs(time, received_bipolar, 'LineWidth', 2);
+ylim([-2, 2]);
+xlabel('Time');
+ylabel('Amplitude');
+title(['Received Bipolar NRZ Signal with AWGN (Variance = ', num2str(noise_var), ')']);
+grid on;
+
+% PSD Calculation and Plotting
+% Polar NRZ Power Spectral Density
+[pxx_polar, f_polar] = pwelch(received_polar, [], [], [], Fs);
+
+% Bipolar NRZ Power Spectral Density
+[pxx_bipolar, f_bipolar] = pwelch(received_bipolar, [], [], [], Fs);
+
+% Plot Power Spectral Density of Polar NRZ
+figure;
+plot(f_polar, 10*log10(pxx_polar), 'LineWidth', 2);
+xlabel('Frequency (Hz)');
+ylabel('Power/Frequency (dB/Hz)');
+title(['Power Spectral Density of Polar NRZ Signal with AWGN (Variance = ', num2str(noise_var), ')']);
+grid on;
+
+% Separate figure for Bipolar NRZ PSD
+figure;
+plot(f_bipolar, 10*log10(pxx_bipolar), 'LineWidth', 2);
+xlabel('Frequency (Hz)');
+ylabel('Power/Frequency (dB/Hz)');
+title(['Power Spectral Density of Bipolar NRZ Signal with AWGN (Variance = ', num2str(noise_var), ')']);
+grid on;
+end
